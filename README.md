@@ -1,0 +1,1 @@
+# instacover-integration-component
