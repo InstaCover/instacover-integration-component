@@ -10,3 +10,4 @@ To develop on local use Pipenv:
  - run 'pipenv install'
  - run 'pipenv shell'
  - start server with 'uvicorn --app-dir=rest_api main:app --reload' - to start with autoreload on changes
+ - on http://127.0.0.1:8000/docs you will see swagger with ability to test your app's endpoints

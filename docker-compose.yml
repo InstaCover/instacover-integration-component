@@ -2,6 +2,11 @@ version: "3.7"
 
 x-common-variables: &common-variables
   CALLBACK_URL: 'http://localhost:9090/callback'  # REPLACE WITH YOUR CALLBACK URL
+  CREATE_SESSION_URL: 'https://api.dev.instacover.ai/instacar/v2.0/session/create'  # replace for production environment
+  GET_TOKEN_URL: 'https://api.dev.instacover.ai/oauth/v1.0/token'  # replace for production environment
+  CLIENT_ID: ''  # REPLACE WITH YOURS
+  CLIENT_SECRET: ''  # REPLACE WITH YOURS
+  TEMP_FOLDER: '/tmp'
 
 x-base-service: &base-service
   environment: *common-variables
@@ -14,9 +19,10 @@ x-base-service: &base-service
 services:
   rest:
     <<: *base-service
+    image: rest_service_image  # replace with your image in container registry
     build:
       context: ./
       dockerfile: ./Dockerfile
     ports:
       - 9091:9090
-    command: ["uvicorn", "--reload", "--app-dir=rest_api", "main:app", "--host=0.0.0.0", "--port=9090"]
+    command: ["uvicorn", "--app-dir=rest_fastapi", "main:app", "--host=0.0.0.0", "--port=9090"]
