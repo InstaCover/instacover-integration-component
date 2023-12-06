@@ -1,0 +1,22 @@
+version: "3.7"
+
+x-common-variables: &common-variables
+  CALLBACK_URL: 'http://localhost:9090/callback'  # REPLACE WITH YOUR CALLBACK URL
+
+x-base-service: &base-service
+  environment: *common-variables
+  build:
+    context: ./
+  restart: always
+  volumes:
+    - ./:/project
+
+services:
+  rest:
+    <<: *base-service
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    ports:
+      - 9091:9090
+    command: ["uvicorn", "--reload", "--app-dir=rest_api", "main:app", "--host=0.0.0.0", "--port=9090"]
