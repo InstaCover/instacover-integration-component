@@ -2,7 +2,7 @@ version: "3.7"
 
 x-common-variables: &common-variables
   CALLBACK_URL: 'http://localhost:9090/callback'  # REPLACE WITH YOUR CALLBACK URL
-  CREATE_SESSION_URL: 'https://api.dev.instacover.ai/instacar/v2.0/session/create'  # replace for production environment
+  CREATE_SESSION_URL: 'https://api.dev.instacover.ai/instacar/v3.0/session'  # replace for production environment
   GET_TOKEN_URL: 'https://api.dev.instacover.ai/oauth/v1.0/token'  # replace for production environment
   CLIENT_ID: ''  # REPLACE WITH YOURS
   CLIENT_SECRET: ''  # REPLACE WITH YOURS

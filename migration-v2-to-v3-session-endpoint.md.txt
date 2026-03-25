@@ -1,0 +1,440 @@
+﻿Migration Guide: /v2.0/session/create → /v3.0/session
+Why migrate
+/v3.0/session replaces flat step-related settings from v2 with per-step configuration via orderedSteps. This gives granular control over required/optional behavior, upload mode, validation toggles, and document-specific behavior per step.
+
+
+________________
+
+
+Endpoint change
+* Old: POST /v2.0/session/create
+* New: POST /v3.0/session
+
+
+Auth and callback behavior stay the same (JWT-protected API usage).
+
+
+________________
+
+
+High-level request model change
+v2 (flat)
+* steps
+* optionalSteps
+* documentStepsWithMultipleUploadsEnabled
+* viewCategorizationDisabled
+* forcedFilesystemPhotoUpload
+* documentsFilesystemPhotoUpload
+* photoQualityValidations.licensePlate
+* documentBrowserCategorizationSteps
+* excludedMiningModels
+* other session-level fields
+v3 (step-centric)
+* orderedSteps (required): array of step objects with per-step configuration
+* other session-level fields remain available (callback, expectedResults, expiration, etc.)
+
+
+________________
+
+
+orderedSteps schema (input)
+Each item supports:
+
+
+* name: PhotoType (required)
+* minMedia: number (required by schema; 0 means optional)
+* maxMedia: number (required by schema; -1 means unlimited)
+* viewsCheck: boolean
+* qualityCheck: boolean
+* documentValidityCheck: boolean
+* enableUpload: boolean
+* enabledMining?: AIModel[]
+
+
+stepType is computed server-side from name and returned in response.
+
+
+________________
+
+
+Direct field mapping (v2 → v3)
+Step list and optionality
+* steps[] → orderedSteps[].name (same order)
+* optionalSteps[] → orderedSteps[].minMedia = 0 for matching steps, otherwise 1
+Multiple uploads
+* documentStepsWithMultipleUploadsEnabled[] → matching document step gets maxMedia = -1
+* Otherwise maxMedia = 1
+AI view validation
+* viewCategorizationDisabled = true → all steps viewsCheck = false
+* viewCategorizationDisabled = false → all steps viewsCheck = true
+Quality validation
+* photoQualityValidations.licensePlate maps to qualityCheck on all steps in migration logic
+Document categorization
+* documentBrowserCategorizationSteps[] → documentValidityCheck = true on matching steps
+Upload mode
+* Non-document steps: forcedFilesystemPhotoUpload → enableUpload
+* Document steps: documentsFilesystemPhotoUpload → enableUpload
+Mining controls
+* v2 used excludedMiningModels globally
+* v3 allows per-step enabledMining
+
+
+________________
+
+
+Session-level fields preserved in v3
+You can keep using these (same semantics):
+
+
+* callbackUrl (required)
+* damageReportCallbackUrl
+* sessionType
+* expirationDays
+* expectedResults (vin, licensePlate, odo, brand, model)
+* expectedInfoScreenEnabled
+* introDisabled
+* extraPayloadData
+* redirectUrlOnSessionFinish
+* requirementsIntroScreenEnabled
+* requiredAttemptsBeforePhotoForce (still session-level, not per-step)
+* vehicleType
+
+
+________________
+
+
+
+
+Validation and behavior differences in v3
+Required structure
+* orderedSteps is required and must contain at least one step.
+Deduplication
+* Duplicate step names are deduplicated (first occurrence kept).
+Media bounds
+* maxMedia must be -1 or >= minMedia, otherwise the request fails
+* 0 is never allowed
+* Damage/ExtraEquipment: default -1, only -1 allowed
+* DocumentPhoto: default 1, only 1 or -1 allowed
+* All others: default 1, only 1 allowed
+Vehicle restrictions
+* Motorcycle cannot include: Dash, Motor, WindscreenFromInside
+* PersonalVehicle cannot include: Cockpit
+Computed field
+* stepType is inferred from name and returned in response.
+
+
+________________
+
+
+Before/after examples
+Example 1: basic migration
+{
+
+
+  "callbackUrl": "https://example.com/callback",
+
+
+  "steps": ["Vin", "FrontSide", "Damage"],
+
+
+  "optionalSteps": ["Damage"],
+
+
+  "viewCategorizationDisabled": false
+
+
+}
+
+
+→
+
+
+{
+
+
+  "callbackUrl": "https://example.com/callback",
+
+
+  "orderedSteps": [{
+
+
+      "name": "Vin",
+
+
+      "minMedia": 1,
+
+
+      "maxMedia": 1,
+
+
+      "viewsCheck": true,
+
+
+      "qualityCheck": true,
+
+
+      "documentValidityCheck": false,
+
+
+      "enableUpload": false
+
+
+    }, {
+
+
+      "name": "FrontSide",
+
+
+      "minMedia": 1,
+
+
+      "maxMedia": 1,
+
+
+      "viewsCheck": true,
+
+
+      "qualityCheck": true,
+
+
+      "documentValidityCheck": false,
+
+
+      "enableUpload": false
+
+
+    }, {
+
+
+      "name": "Damage",
+
+
+      "minMedia": 0,
+
+
+      "maxMedia": -1,
+
+
+      "viewsCheck": true,
+
+
+      "qualityCheck": true,
+
+
+      "documentValidityCheck": false,
+
+
+      "enableUpload": false
+
+
+    }]
+}
+Example 2: documents, multi-upload, and upload mode
+{
+
+
+  "callbackUrl": "https://example.com/callback",
+
+
+  "steps": ["FrontSide", "Invoice", "VehicleRegistrationCertificateFront"],
+
+
+  "documentStepsWithMultipleUploadsEnabled": ["Invoice"],
+
+
+  "documentsFilesystemPhotoUpload": true,
+
+
+  "documentBrowserCategorizationSteps": ["VehicleRegistrationCertificateFront"]
+
+
+}
+
+
+→
+
+
+{
+
+
+  "callbackUrl": "https://example.com/callback",
+
+
+  "orderedSteps": [{
+
+
+      "name": "FrontSide",
+
+
+      "minMedia": 1,
+
+
+      "maxMedia": 1,
+
+
+      "viewsCheck": true,
+
+
+      "qualityCheck": true,
+
+
+      "documentValidityCheck": false,
+
+
+      "enableUpload": false
+
+
+    }, {
+
+
+      "name": "Invoice",
+
+
+      "minMedia": 1,
+
+
+      "maxMedia": -1,
+
+
+      "viewsCheck": true,
+
+
+      "qualityCheck": true,
+
+
+      "documentValidityCheck": false,
+
+
+      "enableUpload": true
+
+
+    }, {
+
+
+      "name": "VehicleRegistrationCertificateFront",
+
+
+      "minMedia": 1,
+
+
+      "maxMedia": 1,
+
+
+      "viewsCheck": true,
+
+
+      "qualityCheck": true,
+
+
+      "documentValidityCheck": true,
+
+
+      "enableUpload": true
+
+
+    }]
+}
+Example 3: using v3-only per-step controls explicitly
+{
+
+
+  "callbackUrl": "https://example.com/callback",
+
+
+  "vehicleType": "Motorcycle",
+
+
+  "orderedSteps": [{
+
+
+      "name": "FrontSide",
+
+
+      "minMedia": 1,
+
+
+      "maxMedia": 1,
+
+
+      "viewsCheck": true,
+
+
+      "qualityCheck": true,
+
+
+      "documentValidityCheck": false,
+
+
+      "enableUpload": false,
+
+
+      "enabledMining": ["CarDamage"]
+
+
+    }, {
+
+
+      "name": "Cockpit",
+
+
+      "minMedia": 1,
+
+
+      "maxMedia": 1,
+
+
+      "viewsCheck": true,
+
+
+      "qualityCheck": true,
+
+
+      "documentValidityCheck": false,
+
+
+      "enableUpload": false
+
+
+    }]
+}
+________________
+
+
+Response change
+v2 response
+* sessionId
+* link
+* expireAt
+* steps
+* optionalSteps
+* vehicleType
+v3 response
+* sessionId
+* link
+* expireAt
+* orderedSteps (includes computed stepType)
+* vehicleType
+
+
+________________
+
+
+Migration checklist
+1. Switch endpoint path to POST /v3.0/session.
+2. Replace steps + related flat step flags with orderedSteps.
+3. Move optionality to minMedia.
+4. Move multi-upload behavior to maxMedia.
+5. Move upload selection to per-step enableUpload.
+6. Move validation toggles to per-step viewsCheck / qualityCheck / documentValidityCheck.
+7. Keep session-level fields unchanged where needed (expectedResults, introDisabled, redirectUrlOnSessionFinish, etc.).
+8. Validate vehicle-specific step combinations.
+9. Update response parsing to read orderedSteps.
+
+
+________________
+
+
+Known implementation notes
+* requiredAttemptsBeforePhotoForce remains a session-level flag in v3.
+* If your integration relies on global excludedMiningModels, verify desired behavior when moving to per-step enabledMining.
+* optionalSteps default was ["Damage","ExtraEquipment","VehicleRegistrationCertificateFront","VehicleRegistrationCertificateBack","RoadworthinessCertificateFront","RoadworthinessCertificateBack","AcceptanceProtocol","IdentityCardFront","IdentityCardBack","Invoice","OtherDocument"] in V2 endpoint - so do not forget to check, if you passed minMedia=0 to these orderedSteps in V3 endpoint

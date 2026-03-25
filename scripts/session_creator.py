@@ -6,6 +6,30 @@ import json
 from scripts.utils import get_token
 
 CREATE_SESSION_URL = os.environ['CREATE_SESSION_URL']
+DEFAULT_OPTIONAL_STEPS = {
+    'Damage',
+    'ExtraEquipment',
+    'VehicleRegistrationCertificateFront',
+    'VehicleRegistrationCertificateBack',
+    'RoadworthinessCertificateFront',
+    'RoadworthinessCertificateBack',
+    'AcceptanceProtocol',
+    'IdentityCardFront',
+    'IdentityCardBack',
+    'Invoice',
+    'OtherDocument',
+}
+DOCUMENT_STEPS = {
+    'Invoice',
+    'VehicleRegistrationCertificateFront',
+    'VehicleRegistrationCertificateBack',
+    'RoadworthinessCertificateFront',
+    'RoadworthinessCertificateBack',
+    'AcceptanceProtocol',
+    'IdentityCardFront',
+    'IdentityCardBack',
+    'OtherDocument',
+}
 
 
 def session_from_rest(callback_url: str, introDisabled: bool = False):
@@ -50,10 +74,32 @@ def session_from_rest(callback_url: str, introDisabled: bool = False):
     req.prepare_url(callback_url, query_params)
     callbackUrl = req.url
 
+    view_categorization_disabled = False
+    documents_filesystem_photo_upload = False
+    forced_filesystem_photo_upload = False
+    document_steps_with_multiple_uploads_enabled = {'Invoice'}
+    document_browser_categorization_steps = {'VehicleRegistrationCertificateFront'}
+    quality_check = True
+
+    ordered_steps = []
+    for step in steps:
+        is_document = step in DOCUMENT_STEPS
+        enable_upload = documents_filesystem_photo_upload if is_document else forced_filesystem_photo_upload
+        max_media = -1 if step in document_steps_with_multiple_uploads_enabled or step in {'Damage', 'ExtraEquipment'} else 1
+        ordered_steps.append({
+            "name": step,
+            "minMedia": 0 if step in DEFAULT_OPTIONAL_STEPS else 1,
+            "maxMedia": max_media,
+            "viewsCheck": not view_categorization_disabled,
+            "qualityCheck": quality_check,
+            "documentValidityCheck": step in document_browser_categorization_steps,
+            "enableUpload": enable_upload,
+        })
+
     # prepare body of POST request to create session - more info on Swagger
     payload_dict = {
         "callbackUrl": callbackUrl,
-        "steps": steps,
+        "orderedSteps": ordered_steps,
         "introDisabled": introDisabled,
     }
 
