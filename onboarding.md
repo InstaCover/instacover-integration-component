@@ -30,7 +30,7 @@ With access_token you can now call session creation - more about optional parame
 import requests
 import json
 
-url = "https://api.instacover.ai/instacar/v2.0/session/create"
+url = "https://api.instacover.ai/instacar/v3.0/session"
 
 payload = json.dumps({
   "callbackUrl": "**YOUR CALLBACK URL TO SEND FINISHED SESSION TO**",
@@ -39,17 +39,30 @@ payload = json.dumps({
     "vin": "",
     "model": "Octavia"
   },
-  "steps": [
-    "Vin",
-    "VehicleRegistrationCertificateBack",
-    "VehicleRegistrationCertificateFront",
-    "RoadworthinessCertificateFront",
-    "RoadworthinessCertificateBack"
-  ],
-  "optionalSteps": [
-    "Vin",
-    "VehicleRegistrationCertificateFront",
-    "RoadworthinessCertificateFront"
+  "orderedSteps": [
+    {
+      "name": "Vin",
+      "minMedia": 1,
+      "maxMedia": 1
+    },
+    {
+      "name": "ExtraEquipment",
+      "minMedia": 0,
+      "maxMedia": -1
+    },
+    {
+      "name": "Damage",
+      "minMedia": 1,
+    },
+    {
+      "name": "VehicleRegistrationCertificateFront",
+      "minMedia": 1,
+      "maxMedia": -1
+    },
+    {
+      "name": "RoadworthinessCertificateBack",
+      "minMedia": 1,
+    },
   ],
   "forcedFilesystemPhotoUpload": False,
   "documentsFilesystemPhotoUpload": False,
